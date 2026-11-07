@@ -42,8 +42,8 @@ def render_kimo():
     commands = data.get('mcp_commands', [])
     srt_content = data.get('srt_content')
 
-    if not commands or 'intro' not in downloads:
-        return jsonify({"status": "error", "message": "Payload incomplete: commands atau intro hilang"}), 400
+    if not commands:
+        return jsonify({"status": "error", "message": "Payload incomplete: mcp_commands kosong"}), 400
 
     local_paths = {}
     try:
