@@ -16,9 +16,11 @@ KIMO_URL="https://github.com/naman-sharma12345/kimo/releases/download/v5.0.0/kim
 KIMO_TMP="/tmp/kimo.tar.gz"
 wget -O "$KIMO_TMP" "$KIMO_URL"
 tar -xzf "$KIMO_TMP" -C /usr/local/bin/
-chmod +x /usr/local/bin/kimo-v5.0.0-linux-x86_64-glibc
-ln -sf /usr/local/bin/kimo-v5.0.0-linux-x86_64-glibc /usr/local/bin/kimo-mcp
-echo "Kimo MCP terinstall di: $(which kimo-mcp)"
+chmod +x /usr/local/bin/kimo-v5.0.0-linux-x86_64-glibc/bin/kimo-mcp
+rm -f /usr/local/bin/kimo-mcp
+ln -sf /usr/local/bin/kimo-v5.0.0-linux-x86_64-glibc/bin/kimo-mcp /usr/local/bin/kimo-mcp
+echo "Kimo MCP terinstall: $(ls -la /usr/local/bin/kimo-mcp)"
+echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | /usr/local/bin/kimo-mcp && echo "Kimo MCP ping: OK"
 
 echo ""
 echo "[3/8] Membuat direktori workspace..."
@@ -53,6 +55,8 @@ deactivate
 
 echo ""
 echo "[6/8] Membuat systemd service..."
+touch /var/log/thumbnail-api-access.log /var/log/thumbnail-api-error.log
+
 cat > /etc/systemd/system/thumbnail-api.service << 'EOF'
 [Unit]
 Description=Kimo Video Engine (AutoClip Backend)
@@ -79,10 +83,12 @@ EOF
 
 chown -R www-data:www-data /var/www/thumbnail-api
 chown -R www-data:www-data /var/www/kimo-workspace
+chown www-data:www-data /var/log/thumbnail-api-access.log /var/log/thumbnail-api-error.log
 
 systemctl daemon-reload
 systemctl enable thumbnail-api
 systemctl start thumbnail-api
+sleep 3
 echo "Service thumbnail-api: $(systemctl is-active thumbnail-api)"
 
 echo ""
@@ -116,10 +122,12 @@ echo "Nginx status: $(systemctl is-active nginx)"
 
 echo ""
 echo "[8/8] Verifikasi instalasi..."
-echo "Kimo MCP: $(kimo-mcp --version 2>/dev/null || echo 'OK (binary ada)')"
+echo "Kimo MCP binary: $(ls -la /usr/local/bin/kimo-mcp)"
+echo "Kimo MCP ping test: $(echo '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}' | /usr/local/bin/kimo-mcp)"
 echo "Python: $(python3 --version)"
 echo "Gunicorn: $(/var/www/thumbnail-api/venv/bin/gunicorn --version)"
 echo "Nginx: $(nginx -v 2>&1)"
+echo "Service: $(systemctl is-active thumbnail-api)"
 
 echo ""
 echo "======================================"
@@ -133,7 +141,11 @@ echo ""
 echo "2. Restart service setelah edit config:"
 echo "   systemctl restart thumbnail-api"
 echo ""
-echo "3. Cek log jika ada masalah:"
+echo "3. Test endpoint:"
+echo "   curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/api/download/test -H \"x-api-key: SECRET_MU\""
+echo "   (harus balas 404, bukan connection refused)"
+echo ""
+echo "4. Cek log jika ada masalah:"
 echo "   journalctl -u thumbnail-api -f"
 echo "   tail -f /var/log/thumbnail-api-error.log"
 echo ""
